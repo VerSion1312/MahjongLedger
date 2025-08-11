@@ -116,6 +116,27 @@ docker build -t mahjong-ledger .
 docker run -d -p 5187:5187 -v ./room_data:/app/room_data mahjong-ledger
 ```
 
+更新版本：
+
+```bash
+# 1. 进入项目目录
+cd /path/to/mahjong-ledger
+
+# 2. 拉取最新代码
+git pull origin main
+
+# 3. 重新构建并启动Docker容器
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
+
+# 4. 检查服务状态
+docker-compose ps
+docker-compose logs -f
+```
+
+
+
 ## 📁 数据目录
 
 确保 `room_data/` 目录有正确的权限：
