@@ -238,6 +238,15 @@ app.get('/api/rooms/:roomCode/lastUpdated', (req, res) => {
     }
 })
 
+// 健康检查端点
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        timestamp: Date.now(),
+        version: '2.0.0'
+    })
+})
+
 // 为单页面应用提供fallback
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'))

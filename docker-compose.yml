@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  mahjong-ledger:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mahjong-ledger
+    restart: unless-stopped
+    ports:
+      - "5187:5187"
+    volumes:
+      # 持久化房间数据
+      - ./room_data:/app/room_data
+    environment:
+      - NODE_ENV=production
+      - PORT=5187
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5187/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mahjong-network
+
+networks:
+  mahjong-network:
+    driver: bridge 
