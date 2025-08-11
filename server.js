@@ -67,14 +67,44 @@ app.post('/api/rooms/:roomCode', (req, res) => {
     }
 
     try {
+        // 确保数据目录存在
+        const dir = path.dirname(filePath)
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, {
+                recursive: true
+            })
+        }
+
+        // 写入文件
         fs.writeFileSync(filePath, JSON.stringify(roomData, null, 2))
+
+        console.log(`房间创建成功: ${roomCode}, 文件路径: ${filePath}`)
+
         res.json({
             success: true,
             message: '房间创建成功'
         })
     } catch (error) {
+        console.error(`创建房间失败: ${roomCode}`, error)
+        console.error(`错误详情:`, {
+            message: error.message,
+            code: error.code,
+            path: filePath,
+            dir: path.dirname(filePath),
+            dirExists: fs.existsSync(path.dirname(filePath)),
+            canWrite: fs.accessSync ? (() => {
+                try {
+                    fs.accessSync(path.dirname(filePath), fs.constants.W_OK)
+                    return true
+                } catch {
+                    return false
+                }
+            })() : 'unknown'
+        })
+
         res.status(500).json({
-            error: '创建房间失败'
+            error: '创建房间失败',
+            details: error.message
         })
     }
 })

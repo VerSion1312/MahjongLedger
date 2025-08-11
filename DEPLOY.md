@@ -95,6 +95,12 @@ NODE_ENV=production
 
 ## 🐳 Docker部署（可选）
 
+### 用户配置
+Docker容器使用以下配置：
+- **用户名**: `mahjong`
+- **用户ID**: `1818`
+- **组ID**: `1818`
+
 创建 `Dockerfile`:
 ```dockerfile
 FROM node:18-alpine
@@ -241,6 +247,53 @@ pm2 install pm2-logrotate
 2. **权限问题**: 确保 `room_data/` 目录权限正确
 3. **内存不足**: 建议至少512MB内存
 4. **文件描述符**: 检查 `ulimit -n` 设置
+
+### Docker部署故障排除
+
+#### 创建房间500错误
+如果遇到创建房间时返回500错误，通常是文件权限问题：
+
+```bash
+# 1. 停止容器
+docker-compose down
+
+# 2. 修复权限
+mkdir -p room_data
+chmod 755 room_data
+chown -R 1818:1818 room_data  # Linux/macOS
+# Windows: 确保room_data目录存在且可写
+
+# 3. 重新构建并启动
+docker-compose up -d --build
+
+# 4. 查看日志
+docker-compose logs -f mahjong-ledger
+```
+
+#### 检查容器日志
+```bash
+# 查看实时日志
+docker-compose logs -f mahjong-ledger
+
+# 查看最近的日志
+docker-compose logs --tail=100 mahjong-ledger
+
+# 进入容器调试
+docker-compose exec mahjong-ledger sh
+```
+
+#### 权限问题诊断
+```bash
+# 检查容器内权限
+docker-compose exec mahjong-ledger ls -la /app/room_data
+
+# 检查用户ID和用户名
+docker-compose exec mahjong-ledger id
+docker-compose exec mahjong-ledger whoami
+
+# 测试写入权限
+docker-compose exec mahjong-ledger sh -c "echo 'test' > /app/room_data/test.txt && rm /app/room_data/test.txt"
+```
 
 ### 检查服务状态
 ```bash

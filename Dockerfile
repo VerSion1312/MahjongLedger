@@ -38,18 +38,20 @@ COPY --from=builder /app/dist ./dist
 COPY server.js ./
 COPY dev.js ./
 
-# 创建数据目录
-RUN mkdir -p room_data && chmod 755 room_data
+# 创建数据目录并设置正确的权限
+RUN mkdir -p room_data && \
+    chmod 755 room_data && \
+    chown -R 1818:1818 room_data
 
 # 创建非root用户
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+RUN addgroup -g 1818 -S mahjong && \
+    adduser -S mahjong -u 1818
 
 # 更改文件所有权
-RUN chown -R nodejs:nodejs /app
+RUN chown -R mahjong:mahjong /app
 
 # 切换到非root用户
-USER nodejs
+USER mahjong
 
 # 暴露端口
 EXPOSE 5187
