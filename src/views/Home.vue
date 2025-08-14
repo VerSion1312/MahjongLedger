@@ -185,6 +185,12 @@
         <div class="hint-icon">🀄</div>
         <div class="hint-title">欢迎使用麻将账本</div>
         <div class="hint-text">点击下方加号添加选手开始记分</div>
+        <div class="safety-tips">
+          <div>抵制不良游戏，拒绝盗版游戏。</div>
+          <div>注意自我保护，谨防受骗上当。</div>
+          <div>适度游戏益脑，沉迷游戏伤身。</div>
+          <div>合理安排时间，享受健康生活。</div>
+        </div>
       </div>
       
       <div class="players-grid">
@@ -499,6 +505,13 @@ export default {
     const qrCodeDataUrl = ref('')
     const roomCodeInput = ref(null)
     const activeActionTab = ref('join')
+    
+    // 基于本地存储的房间信息进行同步初始化，避免首次渲染闪屏
+    const initialRoomCode = Storage.getCurrentRoomCode()
+    if (initialRoomCode) {
+      isInRoom.value = true
+      currentRoomCode.value = initialRoomCode
+    }
     
     // 数据状态
     const currentPlayers = ref([])
@@ -1009,10 +1022,29 @@ export default {
       if (isInRoom.value) {
         if (props.gameId) {
           // 如果在查看特定游戏，重新加载该游戏数据
+          const prevStatus = currentGame.value?.status
           await loadRoomData()
+
+          // 如果当前处于继续对局页面，且状态由 playing 变为 finished，则提醒并跳转
+          if (route.name === 'ContinueGame' && prevStatus === 'playing' && currentGame.value?.status === 'finished') {
+            ElMessage.info('该局已被其他成员结算')
+            router.replace(`/game/${props.gameId}`)
+            return
+          }
         } else {
           // 如果在游戏主界面，检查是否有新的活跃游戏或更新
           await loadRoomData()
+
+          // 当首页正处于继续对局状态时，也检测状态变化
+          if (route.name === 'ContinueGame') {
+            const prevStatus = currentGame.value?.status
+            // 重新拉取数据后 currentGame 可能被更新
+            if (prevStatus === 'playing' && currentGame.value?.status === 'finished') {
+              ElMessage.info('该局已被其他成员结算')
+              router.replace(`/game/${currentGame.value.id}`)
+              return
+            }
+          }
         }
       }
     }
@@ -1557,6 +1589,18 @@ export default {
   font-size: 14px;
   color: #666;
   line-height: 1.5;
+}
+
+.safety-tips {
+  margin-top: 16px;
+  color: #888;
+  font-size: 12px;
+  line-height: 1.8;
+  text-align: center;
+}
+
+.safety-tips div {
+  margin: 2px 0;
 }
 
 .players-grid {

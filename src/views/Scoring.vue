@@ -116,7 +116,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { House, Link } from '@element-plus/icons-vue'
@@ -146,6 +146,9 @@ export default {
     const showRoomInfoDialog = ref(false)
     const saving = ref(false)
     
+    // 记录上一次的游戏状态，用于判断是否从 playing -> finished
+    const lastStatus = ref(null)
+
     // 计算属性
     const currentRound = computed(() => {
       return game.value ? game.value.rounds.length + 1 : 1
@@ -181,6 +184,7 @@ export default {
       }
       
       game.value = gameData
+      lastStatus.value = gameData.status
       
       // 初始化选手得分数据
       playerScores.value = gameData.players.map(player => ({
@@ -190,6 +194,28 @@ export default {
         result: 'win',
         score: null
       }))
+    }
+
+    // 数据同步回调：检测对局是否被他人结算
+    const handleDataUpdate = async () => {
+      const latest = await Storage.getGame(props.gameId)
+      if (!latest) return
+
+      // 检测状态变化
+      if (lastStatus.value === 'playing' && latest.status === 'finished') {
+        // 提示并跳转到该局详情
+        try {
+          // 使用已加载的 Element Plus 组件显示提醒
+          // 这里采用轻提示以避免阻塞用户当前输入
+          ElMessage.info('该局已被其他成员结算')
+        } catch (e) {
+          // 忽略
+        }
+        router.replace(`/game/${props.gameId}`)
+      }
+
+      game.value = latest
+      lastStatus.value = latest.status
     }
     
     const onResultChange = (index) => {
@@ -282,13 +308,10 @@ export default {
         // 触发数据同步，让其他终端看到新的计分
         DataSync.triggerUpdate()
         
+        // 立即返回对局页面并提示成功
+        saving.value = false
+        router.replace(`/continue/${game.value.id}`)
         ElMessage.success('计分完成')
-        
-        // 短暂延迟后返回，让用户看到成功消息
-        setTimeout(() => {
-          saving.value = false
-          router.replace(`/continue/${game.value.id}`)
-        }, 800)
       } catch (error) {
         saving.value = false
         ElMessage.error('保存失败，请重试')
@@ -332,8 +355,17 @@ export default {
       currentRoomCode.value = Storage.getCurrentRoomCode()
       
       await initializeGame()
+
+      // 启动轮询并订阅更新
+      DataSync.startPolling()
+      DataSync.addListener('dataUpdated', handleDataUpdate)
     })
-    
+
+    // 组件卸载时取消订阅
+    onUnmounted(() => {
+      DataSync.removeListener('dataUpdated', handleDataUpdate)
+    })
+
     return {
       game,
       playerScores,
